@@ -2,9 +2,51 @@
 <BaliProject version="3.2" title="p601zero_plus" device="LCMXO2-4000HC-4MG132C" default_implementation="impl1">
     <Options/>
     <Implementation title="impl1" dir="impl1" description="impl1" synthesis="lse" default_strategy="Strategy1">
-        <Options def_top="motherboard"/>
-        <Source name="main.v" type="Verilog" type_short="Verilog">
-            <Options top_module="motherboard"/>
+        <Options def_top="p601zero"/>
+        <Source name="p601zero_plus.v" type="Verilog" type_short="Verilog">
+            <Options top_module="p601zero"/>
+        </Source>
+        <Source name="mcu_pll.v" type="Verilog" type_short="Verilog">
+            <Options/>
+        </Source>
+        <Source name="mcu_ram.v" type="Verilog" type_short="Verilog">
+            <Options/>
+        </Source>
+        <Source name="mcu_rom.v" type="Verilog" type_short="Verilog">
+            <Options/>
+        </Source>
+        <Source name="pagesel.v" type="Verilog" type_short="Verilog">
+            <Options/>
+        </Source>
+        <Source name="sdcardio.v" type="Verilog" type_short="Verilog">
+            <Options/>
+        </Source>
+        <Source name="simpleio.v" type="Verilog" type_short="Verilog">
+            <Options/>
+        </Source>
+        <Source name="tvout.v" type="Verilog" type_short="Verilog">
+            <Options/>
+        </Source>
+        <Source name="uart_rx.v" type="Verilog" type_short="Verilog">
+            <Options/>
+        </Source>
+        <Source name="uart_tx.v" type="Verilog" type_short="Verilog">
+            <Options/>
+        </Source>
+        <Source name="uartio.v" type="Verilog" type_short="Verilog">
+            <Options/>
+        </Source>
+        <Source name="vpu.v" type="Verilog" type_short="Verilog">
+            <Options/>
+        </Source>
+        <Source name="vrom.v" type="Verilog" type_short="Verilog">
+            <Options/>
+        </Source>
+        <Source name="vpu_cache.v" type="Verilog" type_short="Verilog">
+            <Options/>
+        </Source>
+        <Source name="cpu11.vhd" type="VHDL" type_short="VHDL">
+            <Options/>
         </Source>
         <Source name="p601zero_plus.lpf" type="Logic Preference" type_short="LPF">
             <Options/>
