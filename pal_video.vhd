@@ -75,6 +75,7 @@ begin
 	
 	line_visible	<= not in_vbl;
 	line_even		<= not vcount(0);
+	hsync			<= not screen_sync;
 	
 	cntHS <= hcount;
 	cntVS <= vcount;
@@ -119,11 +120,6 @@ begin
 			color <= "000000";
 		else
 			color <= colorin;
-		end if;
-		if (hcount < 37) then
-			hsync <= '1';
-		else
-			hsync <= '0';
 		end if;
 	end process;
 	
