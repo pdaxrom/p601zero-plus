@@ -135,7 +135,7 @@ module vpu (
 				3'b101: if (!hsync) DMA_state <= 3'b000;
 				default: begin
 						vramcs <= 0;
-						DMA_state <= 3'b001;
+						DMA_state <= 3'b101;
 					end
 				endcase
 			end else begin
