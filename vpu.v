@@ -33,13 +33,14 @@ module vpu (
 	input wire cs,
 	output wire irq,
 	input wire pixel_clk,
+	input wire color_clk,
 	
 	output wire [15:0] VADDR,
 	input wire [7:0] VDATA,
 	output reg vramcs,
 	output reg hold,
 	
-	output wire [1:0] tvout
+	output wire [7:0] tvout
 );
 	reg [7:0] vcache_cnt_reg;
 	reg [7:0] vcache_cnt;
@@ -58,9 +59,12 @@ module vpu (
 
 	wire [8:0] cntHS;
 	wire [8:0] cntVS;
-	wire vbl;
+//	wire vbl;
+	wire sync;
 	wire hsync;
-	wire out_sync;
+	wire line_visible;
+	wire line_even;
+//	wire out_sync;
 
 	//--- DMA
 	reg [15:0] DMA_ext_addr_reg;	reg [15:0] DMA_ext_addr;
@@ -228,13 +232,14 @@ module vpu (
 
 	wire cursor_dis = ~(cfg_reg[1] && (cntVS >= cursor_sline) && (cntVS <= cursor_eline) && (cursor_pos == vcache_out_cnt));
 
-	assign tvout[1] = (vbl || ~svl_flag || (vcache_out_cnt <= vcache_cnt_reg) || (vcache_out_cnt > (vcache_cnt_reg + DMA_length_reg))) ? 1'b0:
+	wire point = (~line_visible || ~svl_flag || (vcache_out_cnt <= vcache_cnt_reg) || (vcache_out_cnt > (vcache_cnt_reg + DMA_length_reg))) ? 1'b0:
 					  (cursor_dis) ? shift_reg[7]:
 					  (cfg_reg[0]) ? ~shift_reg[7]:
 					  1'b1;
-	assign tvout[0] = out_sync;
+//	assign tvout[0] = out_sync;
 
-	tvout tvout_impl (
+/*
+	tvout tvout_impl ( 
 		.pixel_clk(pixel_clk),
 		.rst(rst),
 		.cntHS(cntHS),
@@ -243,7 +248,28 @@ module vpu (
 		.hsync(hsync),
 		.out_sync(out_sync)
 	);
-	
+ */
+	wire [5:0] color;
+ 
+	pal_video video_impl(
+		.clk(pixel_clk),
+		.line_visible(line_visible),
+		.line_even(line_even),
+		.sync(sync),
+		.hsync(hsync),
+		.colorin(point?6'b001100:6'b000000),
+		.color(color),
+		.cntHS(cntHS),
+		.cntVS(cntVS)
+	);
+	pal_encoder encoder(
+		.clk(color_clk),
+		.line_visible(line_visible),
+		.line_even(line_even),		.sync(sync),
+		.color(color),
+		.colout(tvout[5:0])
+	);
+
 	vpu_cache vcache(
 		.WrAddress(vcache_cnt[5:0]),
 		.Data(VDATA),
@@ -254,8 +280,11 @@ module vpu (
 		.Q(vcache_data)
 	);
 	
+	/* FIXME: */
+	/* limited to 128 chars due Lattice XO2 4000HC limits */
+	
 	vrom vrom_impl (
-		.Address({vcache_data[6:0], vcache_data[7], char_line}),
+		.Address({vcache_data[6:0], char_line}),
 		.OutClock(pixel_clk),
 		.OutClockEn(1'b1),
 		.Reset(rst),

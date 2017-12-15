@@ -12,19 +12,10 @@
         <Source name="mcu_ram.v" type="Verilog" type_short="Verilog">
             <Options/>
         </Source>
-        <Source name="mcu_rom.v" type="Verilog" type_short="Verilog">
-            <Options/>
-        </Source>
         <Source name="pagesel.v" type="Verilog" type_short="Verilog">
             <Options/>
         </Source>
-        <Source name="sdcardio.v" type="Verilog" type_short="Verilog">
-            <Options/>
-        </Source>
         <Source name="simpleio.v" type="Verilog" type_short="Verilog">
-            <Options/>
-        </Source>
-        <Source name="tvout.v" type="Verilog" type_short="Verilog">
             <Options/>
         </Source>
         <Source name="uart_rx.v" type="Verilog" type_short="Verilog">
@@ -36,16 +27,31 @@
         <Source name="uartio.v" type="Verilog" type_short="Verilog">
             <Options/>
         </Source>
-        <Source name="vpu.v" type="Verilog" type_short="Verilog">
+        <Source name="cpu11.vhd" type="VHDL" type_short="VHDL">
             <Options/>
         </Source>
-        <Source name="vrom.v" type="Verilog" type_short="Verilog">
+        <Source name="spi.v" type="Verilog" type_short="Verilog">
+            <Options/>
+        </Source>
+        <Source name="mcu_rom.v" type="Verilog" type_short="Verilog">
+            <Options/>
+        </Source>
+        <Source name="vpu.v" type="Verilog" type_short="Verilog">
             <Options/>
         </Source>
         <Source name="vpu_cache.v" type="Verilog" type_short="Verilog">
             <Options/>
         </Source>
-        <Source name="cpu11.vhd" type="VHDL" type_short="VHDL">
+        <Source name="vrom.v" type="Verilog" type_short="Verilog">
+            <Options/>
+        </Source>
+        <Source name="pal_encoder.vhd" type="VHDL" type_short="VHDL">
+            <Options/>
+        </Source>
+        <Source name="pal_video.vhd" type="VHDL" type_short="VHDL">
+            <Options/>
+        </Source>
+        <Source name="impl1/impl1.xcf" type="Programming Project File" type_short="Programming">
             <Options/>
         </Source>
         <Source name="p601zero_plus.lpf" type="Logic Preference" type_short="LPF">

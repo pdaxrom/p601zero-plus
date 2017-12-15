@@ -1,46 +1,42 @@
 module p601zero (
-	input	clk_ext,
-
-	input	[3:0] switches,
-	input	[3:0] keys,
-	output	[8:0] seg_led_h,
-	output	[8:0] seg_led_l,
-	output	[7:0] leds,
-	output	[2:0] rgb1,
-	output	[2:0] rgb2,
-
-	input	ps2dat,
-	input	ps2clk,
-
-	input	rxd,
-	output	txd,
-
-	output	[7:0] tvout,
-
-	input	[1:0] irq,
-
-	output	extresn,
-
-	output	[2:0] sa,
+	input clk_ext,
 	
-	output	clk1,
-	output	cd,
+	input  [3:0] switches,
+	input  [3:0] keys,
+	output [8:0] seg_led_h,
+	output [8:0] seg_led_l,
+	output [7:0] leds,
+	output [2:0] rgb1,
+	output [2:0] rgb2,
+	
+	input			rxd,
+	output			txd,
+	input			ps2clk,
+	input			ps2dat,
 
-	output	sdcs,
-	output	sck,
-	input	miso,
-	output	mosi,
-
-	output	[1:0] mcs,
-	output	[1:0] msck,
-	inout	[1:0] msio0,
-	inout	[1:0] msio1,
-	inout	[1:0] msio2,
-	inout	[1:0] msio3
+	output			csen,
+	output	[2:0]	csout,
+	output			mosi,
+	output			sck,
+	input			miso,
+	
+	input	[1:0]	irqin,
+	output			resout,
+	output			cdout,
+	output			clkout,
+	
+	output	[1:0]	mcs,
+	output	[1:0]	msck,
+	inout	[1:0]	msio0,
+	inout	[1:0]	msio1,
+	inout	[1:0]	msio2,
+	inout	[1:0]	msio3,
+	
+	output [7:0] 	tvout
 );
 	parameter OSC_CLOCK = 24000000;
 
-	parameter CPU_CLOCK = 6000000;
+	parameter CPU_CLOCK = 8000000;
 
 	parameter CLK_DIV_PERIOD = (OSC_CLOCK / CPU_CLOCK) / 2;
 	
@@ -48,9 +44,8 @@ module p601zero (
 	
 	parameter LED_DIV_PERIOD = (OSC_CLOCK / LED_REFRESH_CLOCK) / 2;
 
-	wire clk_in;
-	wire sys_clk_out;
 	wire sys_clk;
+	wire color_clk;
 	wire pixel_clk;
 	
 	reg [24:0] led_cnt;
@@ -75,12 +70,12 @@ module p601zero (
 
 	mcu_pll pll_impl(
 		.CLKI(clk_ext),
-		.CLKOP(clk_in),
-		.CLKOS(sys_clk_out),
+		.CLKOP(sys_clk),
+		.CLKOS(color_clk),
 		.CLKOS2(pixel_clk)
 	);
 
-	always @ (posedge clk_in)
+	always @ (posedge sys_clk)
 	begin		if (sys_res) led_anode <= 2'b01;
 		else begin
 			if (led_cnt == (LED_DIV_PERIOD - 1)) begin
@@ -94,7 +89,7 @@ module p601zero (
 	begin
 		if (!keys[3]) begin
 			sys_res <= 1;
-			sys_res_delay = 4'b1000;
+			sys_res_delay <= 4'b1000;
 		end else begin
 			if (sys_res_delay == 4'b0000) begin
 				sys_res <= 0;
@@ -109,6 +104,7 @@ module p601zero (
 	wire vpu_vramcs;
 	wire bram_disable;
 	wire [7:0] bramd;
+	wire [7:0] sramd;
 	
 	/*
 		Mapping BRAM to $0000 - $0FFF
@@ -149,13 +145,14 @@ module p601zero (
 		.rw(sys_rw),
 		.cs(cs_vpu),
 		.pixel_clk(pixel_clk),
+		.color_clk(color_clk),
 		
 		.VADDR(VADDR),
-		.VDATA(en_bram? bramd : EXT_DQ),
+		.VDATA(en_bram? bramd : sramd),
 		.vramcs(vpu_vramcs),
 		.hold(vpu_hold),
 		
-		.tvout(tvout[1:0])
+		.tvout(tvout[7:0])
 	);
 
 	wire en_simpleio = DS5 && (AD[4] == 1'b0); // $E6A0
@@ -170,14 +167,18 @@ module p601zero (
 		.DO(simpleiod),
 		.rw(sys_rw),
 		.cs(cs_simpleio),
-		.clk_in(clk_in),
+		.clk_in(sys_clk),
 		.leds(leds),
 		.led7hi(seg_led_h[7:0]),
 		.led7lo(seg_led_l[7:0]),
 		.rgb1(rgb1),
 		.rgb2(rgb2),
 		.switches(switches),
-		.keys(keys)
+		.keys(keys),
+		.irqin(irqin),
+		.resout(resout),
+		.cdout(cdout),
+		.clkout(clkout)
 	);
 
 	wire en_uartio = DS5 && (AD[4] == 1'b1); // $E6B0
@@ -192,19 +193,18 @@ module p601zero (
 		.DO(uartiod),
 		.rw(sys_rw),
 		.cs(cs_uartio),
-		.clk_in(clk_in),
+		.clk_in(sys_clk),
 		.rxd(rxd),
-		.txd(txd)
+		.txd(txd),
+		.ps2clk(ps2clk),
+		.ps2dat(ps2dat)
 	);
 
 	wire en_sdcardio = DS6; // $E6C0
 	wire cs_sdcardio = en_sdcardio && sys_vma;
 	wire [7:0] sdcardiod;
 
-	// write to external register
-	assign sdcs = (cs_sdcardio && (AD[2:0] == 3'b011)) ? ((~sys_clk) & (~sys_rw)) : 1'b0;
-
-	sdcardio sdcardio_impl(
+	spi spi_impl(
 		.clk(sys_clk),
 		.rst(sys_res),
 		.AD(AD[2:0]),
@@ -213,11 +213,13 @@ module p601zero (
 		.rw(sys_rw),
 		.cs(cs_sdcardio),
 		
-		.clk_in(clk_in),
+		.clk_in(sys_clk),
 		
 		.mosi(mosi),
 		.msck(sck),
-		.miso(miso)
+		.miso(miso),
+		.csout(csout),
+		.csen(csen)
 	);
 
 	wire en_pagesel = DS7; // $E6F0
@@ -272,9 +274,52 @@ module p601zero (
 					(pageen ? (rampage_lock ? sys_rw : 1'b1) : 1'b1) &
 					(sysbooten ? (sysboot_lock ? sys_rw : 1'b1) : 1'b1);
 
-	assign sys_clk = sys_clk_out;
+//	assign EXT_AD[16:0] = ext_vramcs ? {1'b0, VADDR} :
+//						  pageen   ? {1'b1, mempage[2:0], AD[12:0]} : {1'b0, AD};
+
+//	assign EXT_OE_n = ext_vramcs ? 1'b0 : ~((~sys_clk) &  (sys_rw));
+//	assign EXT_WE_n = ext_vramcs ? 1'b1 : ~((~sys_clk) & (~sys_rw));
+//	assign EXT_DQ   = ext_vramcs ? 8'bZ : (sys_rw) ? 8'bZ : DO;
+	assign DI = en_ext      ? sramd:
+				en_bram		? bramd:
+				en_brom		? bromd:
+				en_vpu		? vpud:
+				en_simpleio	? simpleiod:
+				en_uartio	? uartiod:
+				en_sdcardio ? sdcardiod:
+				en_pagesel  ? pageseld:
+				8'b11111111;
+
+	assign SRAM_CS2 = (en_ext && sys_vma) | ext_vramcs;
+
+//	reg [2:0] extbus_clkdiv_cnt;
+//	reg dyn_clk;
+//	always @ (posedge sys_clk_out) begin
+//		if (extbus_clkdiv_cnt >= (((en_ext && sys_vma) || vpu_hold)?3'b001:3'b000)) begin
+//			dyn_clk <= !dyn_clk;
+//			extbus_clkdiv_cnt <= 0;
+//		end else extbus_clkdiv_cnt <= extbus_clkdiv_cnt + 1'b1;
+//	end
+
+//	assign sys_clk = dyn_clk;
+//	assign sys_clk = sys_clk_out;
 
 	wire cpu_clk = vpu_hold ? 1'b1 : sys_clk;
+/*	
+	cpu68 mc6801 (
+		.clk(cpu_clk),
+		.rst(sys_res),
+		.irq(cpu_irq),
+		.nmi(1'b0),
+		.hold(1'b0),
+		.halt(1'b0),
+		.rw(sys_rw),
+		.vma(sys_vma),
+		.address(AD),
+		.data_in(DI),
+		.data_out(DO)
+	);
+ */
  
 	wire cpu_irq = simpleio_irq | uartio_irq | vpu_irq;
 	cpu11 cpu11impl(

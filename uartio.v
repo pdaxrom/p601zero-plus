@@ -17,7 +17,6 @@
 	
 	KIQ - Keyboard irq
 	KIE - Keyboard irq enable
-	KEN - Enable keyboard (Disable UART out)
 	KPR - Keyboard data parity bit
 	KRD - Keyboard data ready
 
@@ -35,11 +34,11 @@ module uartio (
 	input wire clk_in,
 
 	input wire rxd,
-	inout wire txd
+	output wire txd,
+	input wire ps2clk,
+	input wire ps2dat
 );
 
-	reg ps2_clk = 1'b0;
-	reg ps2_dat = 1'b0;
 	reg [3:0] ps2_cnt = 4'b0000;
 	reg [9:0] kbd_shift = 10'b0000000000;
 	reg kbd_new_data;
@@ -65,7 +64,7 @@ module uartio (
 	reg rx_full;
 	reg tx_empty;
  
-	wire kbd_irq = kbd_conf[1] & kbd_conf[0] & kbd_data[9];
+	wire kbd_irq = kbd_conf[1] & kbd_data[9];
  
 	assign irq = (status_reg[7] & status_reg[5]) | (status_reg[6] & status_reg[4]) | kbd_irq;
  
@@ -134,27 +133,23 @@ module uartio (
 					endcase
 				end
 			end
-			if (kbd_conf[0]) begin
-				ps2_clk <= rxd;
-				ps2_dat <= txd;
-				if ((~kbd_data[9]) & kbd_shift[9] & kbd_new_data) begin
-					kbd_data <= kbd_shift;
-					kbd_new_data <= 1'b0;
-				end else if (~kbd_shift[9]) kbd_new_data <= 1'b1;
-			end
+			if ((~kbd_data[9]) & kbd_shift[9] & kbd_new_data) begin
+				kbd_data <= kbd_shift;
+				kbd_new_data <= 1'b0;
+			end else if (~kbd_shift[9]) kbd_new_data <= 1'b1;
 		end
 	end
 
-	always @ (negedge ps2_clk) begin
+	always @ (negedge ps2clk) begin
 		case (ps2_cnt)
 			4'b0000: begin
-					if (~ps2_dat) begin
+					if (~ps2dat) begin
 						kbd_shift <= 0;
 						ps2_cnt <= 4'b0001;
 					end
 				end
 			4'b1001: begin
-					kbd_shift[8] <= kbd_shift[8] ^ ps2_dat;
+					kbd_shift[8] <= kbd_shift[8] ^ ps2dat;
 					ps2_cnt <= 4'b1010;
 				end
 			4'b1010: begin
@@ -162,29 +157,14 @@ module uartio (
 					ps2_cnt <= 4'b0000;
 				end
 			default: begin
-					kbd_shift[7:0] <= {ps2_dat, kbd_shift[7:1]};
-					kbd_shift[8] <= kbd_shift[8] ^ ps2_dat;
+					kbd_shift[7:0] <= {ps2dat, kbd_shift[7:1]};
+					kbd_shift[8] <= kbd_shift[8] ^ ps2dat;
 					ps2_cnt <= ps2_cnt + 1'b1;
 				end
 		endcase
 	end
 
-//	always @ (posedge clk_in) ps2_clk <= rxd;
-//	always @ (posedge clk_in) ps2_dat <= txd;
-
-//	always @ (negedge ps2_clk) begin: ps2_logic
-//		if (rst) kbd_data <= 0;
-//		else begin
-//			if (kbd_data[10] & (~kbd_data[0])) kbd_data <= 0;
-//			else kbd_data <= (kbd_data << 1) | ps2_dat;
-//		end
-//	end
-
-	wire uart_rxd = kbd_conf[0] ? 1'b0 : rxd;
-	wire uart_txd;
-	assign txd = kbd_conf[0] ? 1'bZ : uart_txd;
-
-	uart_rx uart_rx_imp(.clk(clk_in), .rst(rst), .rxd(uart_rxd), .prescale(prescaler),
+	uart_rx uart_rx_imp(.clk(clk_in), .rst(rst), .rxd(rxd), .prescale(prescaler),
 				.output_axis_tdata(rx_data),
 				.output_axis_tvalid(rx_tvalid),
 				.output_axis_tready(rx_tready),
@@ -194,7 +174,7 @@ module uartio (
 				.frame_error(rx_frame_error)
 				);
 
-	uart_tx uart_tx_imp(.clk(clk_in), .rst(rst), .txd(uart_txd), .prescale(prescaler),
+	uart_tx uart_tx_imp(.clk(clk_in), .rst(rst), .txd(txd), .prescale(prescaler),
 				.input_axis_tdata(tx_data),
 				.input_axis_tvalid(tx_tvalid),
 				.input_axis_tready(tx_tready),
